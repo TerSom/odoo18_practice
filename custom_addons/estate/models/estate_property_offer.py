@@ -1,13 +1,14 @@
 from odoo import models, fields, api
 from datetime import timedelta
+from odoo.exceptions import AccessError
 
 class EstatePropertyOffer(models.Model):
     _name = 'estate.property.offer'
     _description = 'Estater Property Offer'
 
     price = fields.Float()
-    status = fields.Selection([('accepted', 'Accepted'), ('refused', 'Refused')], copy=False)
-    partner_id = fields.Many2one('res.partner', string='Partner', required=True)
+    status = fields.Selection([('accepted', 'Accepted'), ('refused', 'Refused')], copy=False , readonly=True)
+    partner_id = fields.Many2one('res.partner', string='Partner', required=True, readonly=True``)
     property_id = fields.Many2one('estate.property', string='Property', required=True)
     validity = fields.Integer(string='Validity (days)', default=7)
     date_deadline = fields.Date(compute='_compute_date_deadline', inverse='_inverse_date_deadline')
@@ -40,3 +41,20 @@ class EstatePropertyOffer(models.Model):
                 record.date_deadline -
                 create_date
             ).days
+
+    def action_accept(self):
+        for record in self:
+            if record.status == 'refused':
+                raise AccessError("sudah refused tidak bisa accepted")
+            else:
+                record.property_id.selling_price = record.price
+                record.property_id.buyer_id = record.partner_id
+                record.status = 'accepted'
+    
+    def action_refuse(self):
+        for record in self:
+            if record.status == 'accepted':
+                raise AccessError("sudah accepted tidak bisa refused")
+            else:
+                record.status = 'refused'
+            

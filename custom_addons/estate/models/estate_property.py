@@ -1,5 +1,6 @@
 from odoo import models, fields, api
 from dateutil.relativedelta import relativedelta
+from odoo.exceptions import AccessError
 class EstateProperty(models.Model):
     _name = 'estate.property'
     _description = 'Estate Property'
@@ -33,7 +34,8 @@ class EstateProperty(models.Model):
         ],
         required=True,
         copy=False,
-        default='new'
+        default='new',
+        readonly=True
     )
     estate_property_type_id = fields.Many2one('estate.property.type', string='Property Type')
     buyer_id = fields.Many2one('res.partner', string='Buyer', copy=False)
@@ -56,3 +58,29 @@ class EstateProperty(models.Model):
             else:
                 record.best_price = 0.0
 
+    @api.onchange('garden')
+    def _onchange_garden(self):
+        if self.garden:
+            self.garden_area = 10
+            self.garden_orientation = 'north'
+        else:
+            self.garden_area = 0
+            self.garden_orientation = False
+
+    def action_sold(self):
+        for record in self:
+            if self.state == 'canceled':
+                raise AccessError("status sudah cancel gk bisa di sold")
+            elif self.state == 'sold':
+                raise AccessError("status sudah sold")
+            else:
+                self.state = 'sold'
+
+    def action_cancel(self):
+        for record in self:
+            if self.state == 'sold':
+                raise AccessError("status sudah sold gk bisa di cancel")
+            elif self.state == 'canceled':
+                raise AccessError("status sudah cancel")
+            else:
+                self.state = 'canceled'
